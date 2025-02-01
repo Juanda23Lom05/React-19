@@ -1,33 +1,39 @@
+import { useEffect, useState } from "react";
 import axios from "axios";
-import { use } from "react";
-
-// Función para obtener los datos de los Pokémon
-const fetchPokemonData = async () => {
-    const response = await axios.get("https://pokeapi.co/api/v2/pokemon?limit=100&offset=0");
-    const pokemonList = response.data.results;
-
-    return Promise.all(
-        pokemonList.map(async (pokemon) => {
-            const detailResponse = await axios.get(pokemon.url);
-            const stats = detailResponse.data.stats.map((stat) => ({
-                name: stat.stat.name,
-                value: stat.base_stat,
-            }));
-            return {
-                name: pokemon.name,
-                image: detailResponse.data.sprites.front_default,
-                stats,
-            };
-        })
-    );
-};
-
-// Crear una promesa externa para que React la maneje
-const pokemonDataPromise = fetchPokemonData();
 
 function ExampleAxios() {
-    // Usar el hook `use` para manejar la promesa
-    const data = use(pokemonDataPromise);
+    const [data, setData] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchData() {
+            try {
+                const response = await axios.get("https://pokeapi.co/api/v2/pokemon?limit=50");
+                const pokemonList = response.data.results;
+                const pokemonData = await Promise.all(
+                    pokemonList.map(async (pokemon) => {
+                        const detailResponse = await axios.get(pokemon.url);
+                        return {
+                            name: pokemon.name,
+                            image: detailResponse.data.sprites.front_default,
+                            stats: detailResponse.data.stats.map((stat) => ({
+                                name: stat.stat.name,
+                                value: stat.base_stat,
+                            })),
+                        };
+                    })
+                );
+                setData(pokemonData);
+            } catch (error) {
+                console.error("Error al cargar los datos", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchData();
+    }, []);
+
+    if (loading) return <h3 className="text-center">Cargando Pokémones...</h3>;
 
     return (
         <div>
